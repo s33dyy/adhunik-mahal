@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CategoryShowcase } from "@/components/storefront/CategoryShowcase";
 import { HeroCarousel } from "@/components/storefront/HeroCarousel";
-import { ProductCard } from "@/components/storefront/ProductCard";
+import { ProductCard, ProductSkeleton } from "@/components/storefront/ProductCard";
 import { StoreLayout } from "@/components/storefront/StoreLayout";
 import { WhyUs } from "@/components/storefront/WhyUs";
 import { useCatalog } from "@/lib/api";
@@ -32,7 +32,7 @@ const Index = () => {
         </div>
         {isLoading ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, index) => <div key={index} className="aspect-[4/5] bg-secondary animate-pulse" />)}
+            {Array.from({ length: 4 }).map((_, index) => <ProductSkeleton key={index} />)}
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -59,9 +59,15 @@ const Index = () => {
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10">
-          {products.slice(0, 12).map((product) => <ProductCard key={product.id} product={product} />)}
-        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10">
+            {Array.from({ length: 8 }).map((_, index) => <ProductSkeleton key={index} />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10">
+            {products.slice(0, 12).map((product) => <ProductCard key={product.id} product={product} />)}
+          </div>
+        )}
         <div className="text-center mt-12">
           <Button asChild variant="outline" className="rounded-none border-charcoal text-charcoal hover:bg-charcoal hover:text-primary-foreground px-10 h-12">
             <Link to="/shop">Browse Full Shop</Link>

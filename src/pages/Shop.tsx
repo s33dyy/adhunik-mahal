@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ProductCard } from "@/components/storefront/ProductCard";
+import { ProductCard, ProductSkeleton } from "@/components/storefront/ProductCard";
 import { StoreLayout } from "@/components/storefront/StoreLayout";
 import { Input } from "@/components/ui/input";
 import { useCatalog, useProducts } from "@/lib/api";
@@ -131,7 +131,11 @@ const Shop = () => {
               {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </div>
-          {products.length === 0 && !isLoading ? (
+          {isLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
+              {Array.from({ length: 6 }).map((_, index) => <ProductSkeleton key={index} />)}
+            </div>
+          ) : products.length === 0 ? (
             <div className="border border-border bg-secondary p-10 text-center">
               <h2 className="font-display text-2xl">No pieces found</h2>
               <p className="text-muted-foreground mt-1">Try another category, price band, or search term.</p>
