@@ -35,7 +35,7 @@ export function Footer() {
           <h4 className="font-display text-lg mb-4 text-gold">Policies</h4>
           <ul className="space-y-2 text-sm text-primary-foreground/70">
             <li><Link to="/about" className="hover:text-gold">Shipping & Delivery</Link></li>
-            <li><Link to="/about" className="hover:text-gold">Returns & Exchange</Link></li>
+
             <li><Link to="/about" className="hover:text-gold">Saree Care Guide</Link></li>
             <li><Link to="/about" className="hover:text-gold">Privacy Policy</Link></li>
             <li><Link to="/about" className="hover:text-gold">Terms of Service</Link></li>
