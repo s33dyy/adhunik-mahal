@@ -39,8 +39,6 @@ export function Header() {
           <p className="sm:hidden text-center w-full">Free India shipping</p>
           <div className="hidden md:flex items-center gap-4 text-[11px]">
             <Link to="/track" className="hover:text-gold transition">Track Order</Link>
-            <span className="opacity-40">|</span>
-            <Link to="/admin/login" className="hover:text-gold transition">Admin</Link>
           </div>
         </div>
       </div>
@@ -69,7 +67,6 @@ export function Header() {
               ))}
               <div className="my-3 gold-divider" />
               <Link to="/track" onClick={() => setMenuOpen(false)} className="py-2 px-3 text-sm">Track Order</Link>
-              <Link to="/admin/login" onClick={() => setMenuOpen(false)} className="py-2 px-3 text-sm">Admin Login</Link>
             </nav>
           </SheetContent>
         </Sheet>
@@ -129,9 +126,6 @@ export function Header() {
         </form>
 
         <div className="flex items-center gap-1 md:ml-2 ml-auto">
-          <Button variant="ghost" size="icon" className="hidden md:inline-flex" asChild>
-            <Link to="/admin/login" aria-label="Account"><User className="h-5 w-5" /></Link>
-          </Button>
           <Button variant="ghost" size="icon" className="hidden sm:inline-flex" asChild>
             <Link to="/shop?featured=true" aria-label="Wishlist"><Heart className="h-5 w-5" /></Link>
           </Button>
