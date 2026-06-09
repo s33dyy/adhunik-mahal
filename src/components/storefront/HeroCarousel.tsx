@@ -55,7 +55,7 @@ export function HeroCarousel() {
             <div key={loop} className="flex gap-12 shrink-0">
               <span className="text-gold">Handloom Certified</span>
               <span>Free Shipping All India</span>
-              <span className="text-gold">Cash on Delivery</span>
+              <span className="text-gold">Free Shipping</span>
               <span>WhatsApp to Order</span>
               <span className="text-gold">Curated in Kolkata</span>
               <span>7-day Exchange</span>

@@ -50,7 +50,7 @@ export function CartDrawer() {
               <Button asChild onClick={() => setOpen(false)} className="w-full h-12 rounded-none bg-maroon hover:bg-maroon-deep">
                 <Link to="/checkout"><MessageCircle className="h-4 w-4 mr-2" /> Checkout via WhatsApp</Link>
               </Button>
-              <p className="text-[11px] text-center text-muted-foreground">Cash on Delivery available · Pan-India shipping</p>
+              <p className="text-[11px] text-center text-muted-foreground">Pan-India shipping</p>
             </div>
           </>
         )}

@@ -35,8 +35,8 @@ export function Header() {
     <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
       <div className="bg-maroon text-primary-foreground text-xs">
         <div className="container flex items-center justify-between py-2 gap-4">
-          <p className="hidden sm:block tracking-wider uppercase">{settings?.notice || "Free shipping across India · Cash on Delivery available"}</p>
-          <p className="sm:hidden text-center w-full">Free India shipping · COD available</p>
+          <p className="hidden sm:block tracking-wider uppercase">{settings?.notice || "Free shipping across India"}</p>
+          <p className="sm:hidden text-center w-full">Free India shipping</p>
           <div className="hidden md:flex items-center gap-4 text-[11px]">
             <Link to="/track" className="hover:text-gold transition">Track Order</Link>
             <span className="opacity-40">|</span>

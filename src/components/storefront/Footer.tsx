@@ -54,7 +54,7 @@ export function Footer() {
       <div className="border-t border-primary-foreground/10">
         <div className="container py-5 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-primary-foreground/50">
           <p>© {new Date().getFullYear()} Adhunik Mahal · Crafted in Kolkata</p>
-          <p>Cash on Delivery · All India Shipping · WhatsApp Booking</p>
+          <p>All India Shipping · WhatsApp Booking</p>
         </div>
       </div>
     </footer>

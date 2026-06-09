@@ -65,7 +65,7 @@ const seedSettings = {
   address: "Gariahat, Kolkata, West Bengal 700019",
   facebook: "https://www.facebook.com/adhunikmahal",
   instagram: "",
-  notice: "Free shipping across India · Cash on Delivery available",
+  notice: "Free shipping across India",
 };
 
 let pool;
