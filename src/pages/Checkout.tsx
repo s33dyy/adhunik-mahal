@@ -77,6 +77,7 @@ const Checkout = () => {
                 <div><Label>Pincode *</Label><Input value={form.pincode} onChange={(event) => set("pincode", event.target.value)} required maxLength={6} className="mt-1 rounded-none" /></div>
               </div>
               <div><Label>Notes for the Atelier</Label><Textarea value={form.notes} onChange={(event) => set("notes", event.target.value)} maxLength={400} rows={3} className="mt-1 rounded-none" placeholder="Blouse stitching, gift wrap, fabric questions…" /></div>
+            </div>
           </div>
 
           <aside>
@@ -98,7 +99,6 @@ const Checkout = () => {
                     ))}
                   </div>
                 )}
-              </div>
               </div>
               <div className="p-6 pt-0">
                 <Button type="submit" disabled={loading || items.length === 0} className="w-full h-12 rounded-none bg-maroon hover:bg-maroon-deep">
