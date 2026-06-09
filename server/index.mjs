@@ -180,22 +180,22 @@ async function api(req, res, url) {
   const method = req.method || "GET";
   const path = url.pathname;
 
-  if (method === "GET" && path === "/api/catalog") return json(res, 200, catalog());
-  if (method === "GET" && path === "/api/categories") return json(res, 200, { categories: listCategories() });
-  if (method === "GET" && path === "/api/hero") return json(res, 200, { heroSlides: listHero() });
-  if (method === "GET" && path === "/api/products") return json(res, 200, { products: listProducts(productFilters(url.searchParams)) });
+  if (method === "GET" && path === "/api/catalog") return json(res, 200, await catalog());
+  if (method === "GET" && path === "/api/categories") return json(res, 200, { categories: await listCategories() });
+  if (method === "GET" && path === "/api/hero") return json(res, 200, { heroSlides: await listHero() });
+  if (method === "GET" && path === "/api/products") return json(res, 200, { products: await listProducts(productFilters(url.searchParams)) });
   if (method === "GET" && path.startsWith("/api/products/")) {
-    const product = getProduct(decodeURIComponent(path.replace("/api/products/", "")));
+    const product = await getProduct(decodeURIComponent(path.replace("/api/products/", "")));
     if (!product) throw httpError(404, "Product not found.");
-    const related = listProducts({ cat: product.categorySlug }).filter((item) => item.id !== product.id).slice(0, 4);
+    const related = (await listProducts({ cat: product.categorySlug })).filter((item) => item.id !== product.id).slice(0, 4);
     return json(res, 200, { product, related });
   }
   if (method === "POST" && path === "/api/orders") {
-    const order = createOrder(await readJson(req));
-    return json(res, 201, { order, settings: getSettings() });
+    const order = await createOrder(await readJson(req));
+    return json(res, 201, { order, settings: await getSettings() });
   }
   if (method === "GET" && path === "/api/orders/track") {
-    const order = trackOrder(url.searchParams.get("id"), url.searchParams.get("phone"));
+    const order = await trackOrder(url.searchParams.get("id"), url.searchParams.get("phone"));
     if (!order) throw httpError(404, "Order not found for those details.");
     return json(res, 200, { order });
   }
@@ -219,53 +219,53 @@ async function api(req, res, url) {
 
   if (path.startsWith("/api/admin")) requireAdmin(req);
 
-  if (method === "GET" && path === "/api/admin/dashboard") return json(res, 200, dashboard());
-  if (method === "GET" && path === "/api/admin/settings") return json(res, 200, { settings: getSettings() });
-  if (method === "PUT" && path === "/api/admin/settings") return json(res, 200, { settings: updateSettings(await readJson(req)) });
+  if (method === "GET" && path === "/api/admin/dashboard") return json(res, 200, await dashboard());
+  if (method === "GET" && path === "/api/admin/settings") return json(res, 200, { settings: await getSettings() });
+  if (method === "PUT" && path === "/api/admin/settings") return json(res, 200, { settings: await updateSettings(await readJson(req)) });
 
-  if (method === "GET" && path === "/api/admin/products") return json(res, 200, { products: listProducts(productFilters(url.searchParams), { admin: true }) });
-  if (method === "POST" && path === "/api/admin/products") return json(res, 201, { product: saveProduct(await readJson(req)) });
+  if (method === "GET" && path === "/api/admin/products") return json(res, 200, { products: await listProducts(productFilters(url.searchParams), { admin: true }) });
+  if (method === "POST" && path === "/api/admin/products") return json(res, 201, { product: await saveProduct(await readJson(req)) });
   if (path.startsWith("/api/admin/products/")) {
     const id = decodeURIComponent(path.replace("/api/admin/products/", ""));
-    if (method === "PUT") return json(res, 200, { product: saveProduct(await readJson(req), id) });
+    if (method === "PUT") return json(res, 200, { product: await saveProduct(await readJson(req), id) });
     if (method === "DELETE") {
-      deleteProduct(id);
+      await deleteProduct(id);
       return json(res, 200, { ok: true });
     }
   }
 
-  if (method === "GET" && path === "/api/admin/categories") return json(res, 200, { categories: listCategories({ includeInactive: true }) });
-  if (method === "POST" && path === "/api/admin/categories") return json(res, 201, { category: saveCategory(await readJson(req)) });
+  if (method === "GET" && path === "/api/admin/categories") return json(res, 200, { categories: await listCategories({ includeInactive: true }) });
+  if (method === "POST" && path === "/api/admin/categories") return json(res, 201, { category: await saveCategory(await readJson(req)) });
   if (path.startsWith("/api/admin/categories/")) {
     const slug = decodeURIComponent(path.replace("/api/admin/categories/", ""));
-    if (method === "PUT") return json(res, 200, { category: saveCategory(await readJson(req), slug) });
+    if (method === "PUT") return json(res, 200, { category: await saveCategory(await readJson(req), slug) });
     if (method === "DELETE") {
-      deleteCategory(slug);
+      await deleteCategory(slug);
       return json(res, 200, { ok: true });
     }
   }
 
-  if (method === "PUT" && path === "/api/admin/featured") return json(res, 200, { products: setFeatured((await readJson(req)).productIds) });
+  if (method === "PUT" && path === "/api/admin/featured") return json(res, 200, { products: await setFeatured((await readJson(req)).productIds) });
 
-  if (method === "GET" && path === "/api/admin/hero") return json(res, 200, { heroSlides: listHero({ admin: true }) });
-  if (method === "POST" && path === "/api/admin/hero") return json(res, 201, { heroSlide: saveHero(await readJson(req)) });
+  if (method === "GET" && path === "/api/admin/hero") return json(res, 200, { heroSlides: await listHero({ admin: true }) });
+  if (method === "POST" && path === "/api/admin/hero") return json(res, 201, { heroSlide: await saveHero(await readJson(req)) });
   if (path.startsWith("/api/admin/hero/")) {
     const id = decodeURIComponent(path.replace("/api/admin/hero/", ""));
-    if (method === "PUT") return json(res, 200, { heroSlide: saveHero(await readJson(req), id) });
+    if (method === "PUT") return json(res, 200, { heroSlide: await saveHero(await readJson(req), id) });
     if (method === "DELETE") {
-      deleteHero(id);
+      await deleteHero(id);
       return json(res, 200, { ok: true });
     }
   }
 
-  if (method === "GET" && path === "/api/admin/orders") return json(res, 200, { orders: listOrders({ q: url.searchParams.get("q") || "", status: url.searchParams.get("status") || "" }) });
+  if (method === "GET" && path === "/api/admin/orders") return json(res, 200, { orders: await listOrders({ q: url.searchParams.get("q") || "", status: url.searchParams.get("status") || "" }) });
   if (method === "GET" && path === "/api/admin/orders/export") {
     res.writeHead(200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": "attachment; filename=adhunik-orders.csv" });
-    return res.end(ordersCsv(listOrders()));
+    return res.end(ordersCsv(await listOrders()));
   }
   if (path.startsWith("/api/admin/orders/") && method === "PUT") {
     const id = decodeURIComponent(path.replace("/api/admin/orders/", ""));
-    return json(res, 200, { order: updateOrderStatus(id, (await readJson(req)).status) });
+    return json(res, 200, { order: await updateOrderStatus(id, (await readJson(req)).status) });
   }
 
   if (method === "POST" && path === "/api/admin/uploads") return json(res, 201, await uploadImage(await readJson(req)));

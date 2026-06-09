@@ -1,8 +1,9 @@
-import { mkdirSync, readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import pg from "pg";
+const { Pool } = pg;
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DatabaseSync } from "node:sqlite";
-import { randomUUID } from "node:crypto";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -67,53 +68,60 @@ const seedSettings = {
   notice: "Free shipping across India · Cash on Delivery available",
 };
 
-function dbPath() {
-  const url = process.env.DATABASE_URL || "data/adhunik-mahal.sqlite";
-  if (url.startsWith("file:")) return fileURLToPath(url);
-  return resolve(root, url);
-}
+let pool;
 
-let db;
-
-export function getDb() {
-  if (!db) {
-    const path = dbPath();
-    mkdirSync(dirname(path), { recursive: true });
-    db = new DatabaseSync(path);
-    db.exec("PRAGMA foreign_keys = ON");
-    initialize(db);
+export async function getDb() {
+  if (!pool) {
+    pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    await initialize();
   }
-  return db;
+  return pool;
 }
 
-function tableColumns(database, table) {
+async function query(sql, params = []) {
+  const db = await getDb();
+  let counter = 1;
+  const pgSql = sql.replace(/\?/g, () => `$${counter++}`);
+  return db.query(pgSql, params);
+}
+
+async function getAll(sql, params = []) {
+  const res = await query(sql, params);
+  return res.rows;
+}
+
+async function getOne(sql, params = []) {
+  const res = await query(sql, params);
+  return res.rows[0] || null;
+}
+
+async function run(sql, params = []) {
+  await query(sql, params);
+}
+
+async function hasCompatibleSchema() {
   try {
-    return new Set(database.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name));
+    const res = await query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
+    const tables = new Set(res.rows.map((row) => row.table_name));
+    return tables.has("products") && tables.has("orders");
   } catch {
-    return new Set();
+    return false;
   }
 }
 
-function hasCompatibleSchema(database) {
-  const products = tableColumns(database, "products");
-  const orders = tableColumns(database, "orders");
-  if (products.size === 0 && orders.size === 0) return true;
-  return products.has("category_slug") && products.has("image_url") && orders.has("items_json") && !products.has("price");
-}
-
-function initialize(database) {
-  if (!hasCompatibleSchema(database)) {
-    database.exec(`
-      DROP TABLE IF EXISTS order_lines;
-      DROP TABLE IF EXISTS products;
-      DROP TABLE IF EXISTS categories;
-      DROP TABLE IF EXISTS hero_slides;
-      DROP TABLE IF EXISTS orders;
-      DROP TABLE IF EXISTS store_settings;
+async function initialize() {
+  if (!(await hasCompatibleSchema())) {
+    await run(`
+      DROP TABLE IF EXISTS order_lines CASCADE;
+      DROP TABLE IF EXISTS products CASCADE;
+      DROP TABLE IF EXISTS categories CASCADE;
+      DROP TABLE IF EXISTS hero_slides CASCADE;
+      DROP TABLE IF EXISTS orders CASCADE;
+      DROP TABLE IF EXISTS store_settings CASCADE;
     `);
   }
 
-  database.exec(`
+  await run(`
     CREATE TABLE IF NOT EXISTS categories (
       slug TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -124,7 +132,9 @@ function initialize(database) {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
-
+  `);
+  
+  await run(`
     CREATE TABLE IF NOT EXISTS products (
       id TEXT PRIMARY KEY,
       slug TEXT NOT NULL UNIQUE,
@@ -145,7 +155,9 @@ function initialize(database) {
       updated_at TEXT NOT NULL,
       FOREIGN KEY(category_slug) REFERENCES categories(slug) ON UPDATE CASCADE
     );
-
+  `);
+  
+  await run(`
     CREATE TABLE IF NOT EXISTS hero_slides (
       id TEXT PRIMARY KEY,
       eyebrow TEXT NOT NULL,
@@ -160,7 +172,9 @@ function initialize(database) {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
-
+  `);
+  
+  await run(`
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,
       customer_name TEXT NOT NULL,
@@ -174,74 +188,61 @@ function initialize(database) {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
-
+  `);
+  
+  await run(`
     CREATE TABLE IF NOT EXISTS store_settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
   `);
 
-  seedIfEmpty(database);
+  await seedIfEmpty();
 }
 
-function seedIfEmpty(database) {
-  const categoryCount = database.prepare("SELECT COUNT(*) AS count FROM categories").get().count;
+async function seedIfEmpty() {
+  const catCount = await getOne("SELECT COUNT(*) AS count FROM categories");
   const stamp = now();
-  if (categoryCount === 0) {
-    const insert = database.prepare(`
-      INSERT INTO categories (slug, name, description, image_url, active, sort_order, created_at, updated_at)
-      VALUES (?, ?, ?, ?, 1, ?, ?, ?)
-    `);
+  if (parseInt(catCount.count, 10) === 0) {
     for (const category of seedCategories) {
-      insert.run(category.slug, category.name, category.description, category.imageUrl, category.sortOrder, stamp, stamp);
+      await run(`
+        INSERT INTO categories (slug, name, description, image_url, active, sort_order, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+      `, [category.slug, category.name, category.description, category.imageUrl, category.sortOrder, stamp, stamp]);
     }
   }
 
-  const productCount = database.prepare("SELECT COUNT(*) AS count FROM products").get().count;
-  if (productCount === 0) {
-    const insert = database.prepare(`
-      INSERT INTO products (
-        id, slug, name, category_slug, sku, fabric, occasion, color, description,
-        image_url, gallery_json, featured, status, tag, sort_order, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
-    `);
+  const productCount = await getOne("SELECT COUNT(*) AS count FROM products");
+  if (parseInt(productCount.count, 10) === 0) {
     for (const product of seedProducts) {
-      insert.run(
-        product.id,
-        product.slug,
-        product.name,
-        product.categorySlug,
-        product.sku,
-        product.fabric,
-        product.occasion,
-        product.color,
-        product.description,
-        product.imageUrl,
-        JSON.stringify([product.imageUrl]),
-        product.featured ? 1 : 0,
-        product.tag ?? null,
-        product.sortOrder,
-        stamp,
-        stamp
-      );
+      await run(`
+        INSERT INTO products (
+          id, slug, name, category_slug, sku, fabric, occasion, color, description,
+          image_url, gallery_json, featured, status, tag, sort_order, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+      `, [
+        product.id, product.slug, product.name, product.categorySlug, product.sku, product.fabric,
+        product.occasion, product.color, product.description, product.imageUrl,
+        JSON.stringify([product.imageUrl]), product.featured ? 1 : 0, product.tag ?? null, product.sortOrder, stamp, stamp
+      ]);
     }
   }
 
-  const heroCount = database.prepare("SELECT COUNT(*) AS count FROM hero_slides").get().count;
-  if (heroCount === 0) {
-    const insert = database.prepare(`
-      INSERT INTO hero_slides (id, eyebrow, title, subtitle, image_url, cta_label, cta_href, align, active, sort_order, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+  const heroCount = await getOne("SELECT COUNT(*) AS count FROM hero_slides");
+  if (parseInt(heroCount.count, 10) === 0) {
     for (const slide of seedHero) {
-      insert.run(slide.id, slide.eyebrow, slide.title, slide.subtitle, slide.imageUrl, slide.ctaLabel, slide.ctaHref, slide.align, slide.active ? 1 : 0, slide.sortOrder, stamp, stamp);
+      await run(`
+        INSERT INTO hero_slides (id, eyebrow, title, subtitle, image_url, cta_label, cta_href, align, active, sort_order, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [slide.id, slide.eyebrow, slide.title, slide.subtitle, slide.imageUrl, slide.ctaLabel, slide.ctaHref, slide.align, slide.active ? 1 : 0, slide.sortOrder, stamp, stamp]);
     }
   }
 
-  const settingsCount = database.prepare("SELECT COUNT(*) AS count FROM store_settings").get().count;
-  if (settingsCount === 0) {
-    const insert = database.prepare("INSERT INTO store_settings (key, value) VALUES (?, ?)");
-    for (const [key, value] of Object.entries(seedSettings)) insert.run(key, String(value));
+  const settingsCount = await getOne("SELECT COUNT(*) AS count FROM store_settings");
+  if (parseInt(settingsCount.count, 10) === 0) {
+    for (const [key, value] of Object.entries(seedSettings)) {
+      await run("INSERT INTO store_settings (key, value) VALUES (?, ?)", [key, String(value)]);
+    }
   }
 }
 
@@ -287,7 +288,7 @@ function categoryFromRow(row) {
     imageUrl: row.image_url,
     image: row.image_url,
     active: Boolean(row.active),
-    count: row.product_count ?? 0,
+    count: Number(row.product_count ?? 0),
     sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -324,68 +325,69 @@ export function slugify(input) {
     .slice(0, 80) || randomUUID().slice(0, 8);
 }
 
-function uniqueSlug(database, table, base, currentId, idColumn = "id") {
+async function uniqueSlug(table, base, currentId, idColumn = "id") {
   let slug = slugify(base);
   let attempt = slug;
   let i = 2;
   while (true) {
-    const row = database.prepare(`SELECT ${idColumn} AS id FROM ${table} WHERE slug = ?`).get(attempt);
+    const row = await getOne(`SELECT ${idColumn} AS id FROM ${table} WHERE slug = ?`, [attempt]);
     if (!row || row.id === currentId) return attempt;
     attempt = `${slug}-${i++}`;
   }
 }
 
-export function getSettings() {
-  const rows = getDb().prepare("SELECT key, value FROM store_settings").all();
+export async function getSettings() {
+  const rows = await getAll("SELECT key, value FROM store_settings");
   return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 
-export function updateSettings(values) {
-  const database = getDb();
-  const stmt = database.prepare("INSERT INTO store_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
-  for (const [key, value] of Object.entries(values)) stmt.run(key, String(value ?? ""));
+export async function updateSettings(values) {
+  for (const [key, value] of Object.entries(values)) {
+    await run("INSERT INTO store_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value", [key, String(value ?? "")]);
+  }
   return getSettings();
 }
 
-export function listCategories({ includeInactive = false } = {}) {
+export async function listCategories({ includeInactive = false } = {}) {
   const where = includeInactive ? "" : "WHERE c.active = 1";
-  return getDb().prepare(`
+  const rows = await getAll(`
     SELECT c.*, COUNT(p.id) AS product_count
     FROM categories c
     LEFT JOIN products p ON p.category_slug = c.slug AND p.status = 'active'
     ${where}
     GROUP BY c.slug
     ORDER BY c.sort_order ASC, c.name ASC
-  `).all().map(categoryFromRow);
+  `);
+  return rows.map(categoryFromRow);
 }
 
-export function saveCategory(input, existingSlug) {
-  const database = getDb();
+export async function saveCategory(input, existingSlug) {
   const stamp = now();
-  const slug = existingSlug || uniqueSlug(database, "categories", input.slug || input.name, null, "slug");
-  const current = existingSlug ? database.prepare("SELECT * FROM categories WHERE slug = ?").get(existingSlug) : null;
+  const slug = existingSlug || (await uniqueSlug("categories", input.slug || input.name, null, "slug"));
+  const current = existingSlug ? await getOne("SELECT * FROM categories WHERE slug = ?", [existingSlug]) : null;
   if (!input.name || !input.imageUrl) throw httpError(400, "Category name and image are required.");
   if (current) {
-    database.prepare(`
+    await run(`
       UPDATE categories SET name = ?, description = ?, image_url = ?, active = ?, sort_order = ?, updated_at = ? WHERE slug = ?
-    `).run(input.name, input.description ?? "", input.imageUrl, input.active === false ? 0 : 1, Number(input.sortOrder ?? current.sort_order ?? 0), stamp, existingSlug);
-    return listCategories({ includeInactive: true }).find((category) => category.slug === existingSlug);
+    `, [input.name, input.description ?? "", input.imageUrl, input.active === false ? 0 : 1, Number(input.sortOrder ?? current.sort_order ?? 0), stamp, existingSlug]);
+    const categories = await listCategories({ includeInactive: true });
+    return categories.find((category) => category.slug === existingSlug);
   }
-  database.prepare(`
+  await run(`
     INSERT INTO categories (slug, name, description, image_url, active, sort_order, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(slug, input.name, input.description ?? "", input.imageUrl, input.active === false ? 0 : 1, Number(input.sortOrder ?? 0), stamp, stamp);
-  return listCategories({ includeInactive: true }).find((category) => category.slug === slug);
+  `, [slug, input.name, input.description ?? "", input.imageUrl, input.active === false ? 0 : 1, Number(input.sortOrder ?? 0), stamp, stamp]);
+  const categories = await listCategories({ includeInactive: true });
+  return categories.find((category) => category.slug === slug);
 }
 
-export function deleteCategory(slug) {
-  const database = getDb();
-  const used = database.prepare("SELECT COUNT(*) AS count FROM products WHERE category_slug = ?").get(slug).count;
-  if (used > 0) throw httpError(409, "Move or delete products before deleting this category.");
-  database.prepare("DELETE FROM categories WHERE slug = ?").run(slug);
+export async function deleteCategory(slug) {
+  const used = await getOne("SELECT COUNT(*) AS count FROM products WHERE category_slug = ?", [slug]);
+  if (parseInt(used.count, 10) > 0) throw httpError(409, "Move or delete products before deleting this category.");
+  await run("DELETE FROM categories WHERE slug = ?", [slug]);
 }
 
-export function listProducts(filters = {}, { admin = false } = {}) {
+export async function listProducts(filters = {}, { admin = false } = {}) {
   const clauses = [];
   const params = [];
   if (!admin) clauses.push("status = 'active'");
@@ -398,7 +400,7 @@ export function listProducts(filters = {}, { admin = false } = {}) {
     params.push(filters.cat);
   }
   if (filters.q) {
-    clauses.push("(name LIKE ? OR sku LIKE ? OR fabric LIKE ? OR occasion LIKE ? OR color LIKE ?)");
+    clauses.push("(name ILIKE ? OR sku ILIKE ? OR fabric ILIKE ? OR occasion ILIKE ? OR color ILIKE ?)");
     const q = `%${filters.q}%`;
     params.push(q, q, q, q, q);
   }
@@ -417,29 +419,29 @@ export function listProducts(filters = {}, { admin = false } = {}) {
     featured: "featured DESC, sort_order ASC",
   };
   const orderBy = sortMap[filters.sort] || "sort_order ASC, created_at DESC";
-  return getDb().prepare(`SELECT * FROM products ${where} ORDER BY ${orderBy}`).all(...params).map(productFromRow);
+  const rows = await getAll(`SELECT * FROM products ${where} ORDER BY ${orderBy}`, params);
+  return rows.map(productFromRow);
 }
 
-export function getProduct(slugOrId, { admin = false } = {}) {
-  const row = getDb().prepare(`
+export async function getProduct(slugOrId, { admin = false } = {}) {
+  const row = await getOne(`
     SELECT * FROM products WHERE (slug = ? OR id = ?) ${admin ? "" : "AND status = 'active'"}
-  `).get(slugOrId, slugOrId);
+  `, [slugOrId, slugOrId]);
   return row ? productFromRow(row) : null;
 }
 
-export function saveProduct(input, id) {
-  const database = getDb();
+export async function saveProduct(input, id) {
   const stamp = now();
-  const current = id ? database.prepare("SELECT * FROM products WHERE id = ?").get(id) : null;
-  const category = database.prepare("SELECT slug FROM categories WHERE slug = ?").get(input.categorySlug || input.category);
+  const current = id ? await getOne("SELECT * FROM products WHERE id = ?", [id]) : null;
+  const category = await getOne("SELECT slug FROM categories WHERE slug = ?", [input.categorySlug || input.category]);
   if (!category) throw httpError(400, "Choose a valid category.");
   if (!input.name || !input.sku || !input.imageUrl) throw httpError(400, "Product name, SKU and image are required.");
   const productId = current?.id || input.id || randomUUID();
   if (input.featured) {
-    const featuredCount = database.prepare("SELECT COUNT(*) AS count FROM products WHERE featured = 1 AND id != ?").get(productId).count;
-    if (featuredCount >= 4) throw httpError(400, "Only 4 products can be featured. Use the Featured screen to replace one.");
+    const featured = await getOne("SELECT COUNT(*) AS count FROM products WHERE featured = 1 AND id != ?", [productId]);
+    if (parseInt(featured.count, 10) >= 4) throw httpError(400, "Only 4 products can be featured. Use the Featured screen to replace one.");
   }
-  const slug = current ? uniqueSlug(database, "products", input.slug || input.name, current.id) : uniqueSlug(database, "products", input.slug || input.name);
+  const slug = current ? await uniqueSlug("products", input.slug || input.name, current.id) : await uniqueSlug("products", input.slug || input.name);
   const gallery = Array.isArray(input.gallery) && input.gallery.length ? input.gallery : [input.imageUrl];
   const values = [
     slug,
@@ -459,51 +461,51 @@ export function saveProduct(input, id) {
     stamp,
   ];
   if (current) {
-    database.prepare(`
+    await run(`
       UPDATE products SET slug = ?, name = ?, category_slug = ?, sku = ?, fabric = ?,
         occasion = ?, color = ?, description = ?, image_url = ?, gallery_json = ?, featured = ?,
         status = ?, tag = ?, sort_order = ?, updated_at = ? WHERE id = ?
-    `).run(...values, id);
+    `, [...values, id]);
   } else {
-    database.prepare(`
+    await run(`
       INSERT INTO products (
         slug, name, category_slug, sku, fabric, occasion, color, description, image_url,
         gallery_json, featured, status, tag, sort_order, updated_at, id, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(...values, productId, stamp);
+    `, [...values, productId, stamp]);
   }
   return getProduct(productId, { admin: true });
 }
 
-export function deleteProduct(id) {
-  getDb().prepare("DELETE FROM products WHERE id = ?").run(id);
+export async function deleteProduct(id) {
+  await run("DELETE FROM products WHERE id = ?", [id]);
 }
 
-export function setFeatured(productIds) {
+export async function setFeatured(productIds) {
   if (!Array.isArray(productIds) || productIds.length !== 4) throw httpError(400, "Choose exactly 4 featured products.");
-  const database = getDb();
-  database.exec("BEGIN");
+  await run("BEGIN");
   try {
-    database.prepare("UPDATE products SET featured = 0, updated_at = ?").run(now());
-    const stmt = database.prepare("UPDATE products SET featured = 1, updated_at = ? WHERE id = ?");
-    for (const id of productIds) stmt.run(now(), id);
-    database.exec("COMMIT");
+    await run("UPDATE products SET featured = 0, updated_at = ?", [now()]);
+    for (const id of productIds) {
+      await run("UPDATE products SET featured = 1, updated_at = ? WHERE id = ?", [now(), id]);
+    }
+    await run("COMMIT");
   } catch (error) {
-    database.exec("ROLLBACK");
+    await run("ROLLBACK");
     throw error;
   }
   return listProducts({}, { admin: true });
 }
 
-export function listHero({ admin = false } = {}) {
+export async function listHero({ admin = false } = {}) {
   const where = admin ? "" : "WHERE active = 1";
-  return getDb().prepare(`SELECT * FROM hero_slides ${where} ORDER BY sort_order ASC`).all().map(heroFromRow);
+  const rows = await getAll(`SELECT * FROM hero_slides ${where} ORDER BY sort_order ASC`);
+  return rows.map(heroFromRow);
 }
 
-export function saveHero(input, id) {
-  const database = getDb();
+export async function saveHero(input, id) {
   const stamp = now();
-  const current = id ? database.prepare("SELECT * FROM hero_slides WHERE id = ?").get(id) : null;
+  const current = id ? await getOne("SELECT * FROM hero_slides WHERE id = ?", [id]) : null;
   if (!input.title || !input.imageUrl) throw httpError(400, "Hero title and image are required.");
   const heroId = current?.id || input.id || randomUUID();
   const values = [
@@ -519,48 +521,50 @@ export function saveHero(input, id) {
     stamp,
   ];
   if (current) {
-    database.prepare(`
+    await run(`
       UPDATE hero_slides SET eyebrow = ?, title = ?, subtitle = ?, image_url = ?, cta_label = ?, cta_href = ?,
         align = ?, active = ?, sort_order = ?, updated_at = ? WHERE id = ?
-    `).run(...values, id);
+    `, [...values, id]);
   } else {
-    database.prepare(`
+    await run(`
       INSERT INTO hero_slides (eyebrow, title, subtitle, image_url, cta_label, cta_href, align, active, sort_order, updated_at, id, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(...values, heroId, stamp);
+    `, [...values, heroId, stamp]);
   }
-  return listHero({ admin: true }).find((slide) => slide.id === heroId);
+  const slides = await listHero({ admin: true });
+  return slides.find((slide) => slide.id === heroId);
 }
 
-export function deleteHero(id) {
-  getDb().prepare("DELETE FROM hero_slides WHERE id = ?").run(id);
+export async function deleteHero(id) {
+  await run("DELETE FROM hero_slides WHERE id = ?", [id]);
 }
 
-export function createOrder(input) {
-  const database = getDb();
+export async function createOrder(input) {
   const items = Array.isArray(input.items) ? input.items : [];
   if (!input.name || !input.phone || !input.address || !input.city || !input.pincode) throw httpError(400, "Delivery details are incomplete.");
   if (items.length === 0) throw httpError(400, "Cart is empty.");
-  const productStmt = database.prepare("SELECT * FROM products WHERE id = ? AND status = 'active'");
-  const orderItems = items.map((item) => {
-    const product = productStmt.get(item.productId || item.id);
+  
+  const orderItems = [];
+  for (const item of items) {
+    const product = await getOne("SELECT * FROM products WHERE id = ? AND status = 'active'", [item.productId || item.id]);
     if (!product) throw httpError(400, "A product in the cart is no longer available.");
     const qty = Math.max(1, Number(item.qty || item.quantity || 1));
-    return {
+    orderItems.push({
       productId: product.id,
       slug: product.slug,
       name: product.name,
       sku: product.sku,
       imageUrl: product.image_url,
       qty,
-    };
-  });
+    });
+  }
+  
   const id = `AM${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   const stamp = now();
-  database.prepare(`
+  await run(`
     INSERT INTO orders (id, customer_name, phone, address, city, pincode, notes, items_json, status, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-  `).run(id, input.name, input.phone, input.address, input.city, input.pincode, input.notes || "", JSON.stringify(orderItems), stamp, stamp);
+  `, [id, input.name, input.phone, input.address, input.city, input.pincode, input.notes || "", JSON.stringify(orderItems), stamp, stamp]);
   return getOrder(id);
 }
 
@@ -583,20 +587,20 @@ function orderFromRow(row) {
   };
 }
 
-export function getOrder(id) {
-  const row = getDb().prepare("SELECT * FROM orders WHERE id = ?").get(id);
+export async function getOrder(id) {
+  const row = await getOne("SELECT * FROM orders WHERE id = ?", [id]);
   return row ? orderFromRow(row) : null;
 }
 
-export function trackOrder(id, phone) {
-  const order = getOrder(id);
+export async function trackOrder(id, phone) {
+  const order = await getOrder(id);
   if (!order) return null;
   const expected = String(order.phone).replace(/\D/g, "");
   const actual = String(phone || "").replace(/\D/g, "");
   return expected.endsWith(actual.slice(-10)) || actual.endsWith(expected.slice(-10)) ? order : null;
 }
 
-export function listOrders({ q = "", status = "" } = {}) {
+export async function listOrders({ q = "", status = "" } = {}) {
   const clauses = [];
   const params = [];
   if (status && status !== "all") {
@@ -604,37 +608,38 @@ export function listOrders({ q = "", status = "" } = {}) {
     params.push(status);
   }
   if (q) {
-    clauses.push("(id LIKE ? OR customer_name LIKE ? OR phone LIKE ? OR city LIKE ?)");
-    const query = `%${q}%`;
-    params.push(query, query, query, query);
+    clauses.push("(id ILIKE ? OR customer_name ILIKE ? OR phone ILIKE ? OR city ILIKE ?)");
+    const queryStr = `%${q}%`;
+    params.push(queryStr, queryStr, queryStr, queryStr);
   }
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-  return getDb().prepare(`SELECT * FROM orders ${where} ORDER BY created_at DESC`).all(...params).map(orderFromRow);
+  const rows = await getAll(`SELECT * FROM orders ${where} ORDER BY created_at DESC`, params);
+  return rows.map(orderFromRow);
 }
 
-export function updateOrderStatus(id, status) {
+export async function updateOrderStatus(id, status) {
   const allowed = new Set(["pending", "confirmed", "shipped", "delivered", "cancelled"]);
   if (!allowed.has(status)) throw httpError(400, "Invalid status.");
-  getDb().prepare("UPDATE orders SET status = ?, updated_at = ? WHERE id = ?").run(status, now(), id);
+  await run("UPDATE orders SET status = ?, updated_at = ? WHERE id = ?", [status, now(), id]);
   return getOrder(id);
 }
 
-export function dashboard() {
-  const database = getDb();
-  const orders = listOrders();
-  const productCount = database.prepare("SELECT COUNT(*) AS count FROM products").get().count;
-  const activeProductCount = database.prepare("SELECT COUNT(*) AS count FROM products WHERE status = 'active'").get().count;
-  const categoryCount = database.prepare("SELECT COUNT(*) AS count FROM categories").get().count;
-  const topProducts = listProducts({}, { admin: true }).slice(0, 5).map((product) => {
+export async function dashboard() {
+  const orders = await listOrders();
+  const productCount = await getOne("SELECT COUNT(*) AS count FROM products");
+  const activeProductCount = await getOne("SELECT COUNT(*) AS count FROM products WHERE status = 'active'");
+  const categoryCount = await getOne("SELECT COUNT(*) AS count FROM categories");
+  const products = await listProducts({}, { admin: true });
+  const topProducts = products.slice(0, 5).map((product) => {
     const sold = orders.reduce((sum, order) => sum + order.items.filter((item) => item.productId === product.id).reduce((s, item) => s + item.qty, 0), 0);
     return { ...product, sold };
   }).sort((a, b) => b.sold - a.sold || a.sortOrder - b.sortOrder);
   return {
     stats: {
       orders: orders.length,
-      productCount,
-      activeProductCount,
-      categoryCount,
+      productCount: parseInt(productCount.count, 10),
+      activeProductCount: parseInt(activeProductCount.count, 10),
+      categoryCount: parseInt(categoryCount.count, 10),
       customers: new Set(orders.map((order) => order.phone)).size,
     },
     recentOrders: orders.slice(0, 8),
@@ -642,14 +647,17 @@ export function dashboard() {
   };
 }
 
-export function catalog() {
-  const products = listProducts();
+export async function catalog() {
+  const products = await listProducts();
+  const categories = await listCategories();
+  const heroSlides = await listHero();
+  const settings = await getSettings();
   return {
-    categories: listCategories(),
+    categories,
     products,
     featuredProducts: products.filter((product) => product.featured).slice(0, 4),
-    heroSlides: listHero(),
-    settings: getSettings(),
+    heroSlides,
+    settings,
   };
 }
 
