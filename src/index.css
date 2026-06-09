@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Cinzel:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Adhunik Mahal — Ivory / Maroon / Gold / Charcoal / Bottle Green */
+    --background: 40 38% 96%;            /* ivory */
+    --foreground: 220 14% 14%;           /* charcoal */
+
+    --card: 40 40% 98%;
+    --card-foreground: 220 14% 14%;
+
+    --popover: 40 40% 98%;
+    --popover-foreground: 220 14% 14%;
+
+    --primary: 350 64% 26%;              /* deep maroon */
+    --primary-foreground: 40 40% 97%;
+    --primary-glow: 350 60% 38%;
+
+    --secondary: 40 30% 92%;
+    --secondary-foreground: 220 14% 14%;
+
+    --muted: 40 22% 90%;
+    --muted-foreground: 220 8% 38%;
+
+    --accent: 40 55% 50%;                /* antique gold */
+    --accent-foreground: 220 14% 12%;
+
+    --gold: 40 55% 50%;
+    --gold-soft: 40 50% 78%;
+    --maroon: 350 64% 26%;
+    --maroon-deep: 350 70% 18%;
+    --bottle: 152 45% 22%;               /* bottle green */
+    --bottle-foreground: 40 40% 97%;
+    --charcoal: 220 14% 14%;
+
+    --destructive: 0 70% 42%;
+    --destructive-foreground: 40 40% 97%;
+
+    --border: 35 22% 84%;
+    --input: 35 22% 84%;
+    --ring: 350 64% 26%;
+
+    --radius: 0.25rem;
+
+    --gradient-hero: linear-gradient(135deg, hsl(var(--maroon-deep)) 0%, hsl(var(--maroon)) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(40 60% 58%), hsl(40 45% 38%));
+    --shadow-elegant: 0 10px 40px -12px hsl(var(--maroon) / 0.25);
+    --shadow-card: 0 2px 10px -3px hsl(220 14% 14% / 0.08);
+
+    --sidebar-background: 40 30% 96%;
+    --sidebar-foreground: 220 14% 18%;
+    --sidebar-primary: 350 64% 26%;
+    --sidebar-primary-foreground: 40 40% 97%;
+    --sidebar-accent: 40 25% 90%;
+    --sidebar-accent-foreground: 220 14% 14%;
+    --sidebar-border: 35 22% 84%;
+    --sidebar-ring: 350 64% 26%;
+  }
+
+  .dark {
+    --background: 220 14% 10%;
+    --foreground: 40 30% 94%;
+    --card: 220 14% 12%;
+    --card-foreground: 40 30% 94%;
+    --popover: 220 14% 12%;
+    --popover-foreground: 40 30% 94%;
+    --primary: 40 55% 60%;
+    --primary-foreground: 220 14% 10%;
+    --secondary: 220 12% 18%;
+    --secondary-foreground: 40 30% 94%;
+    --muted: 220 12% 18%;
+    --muted-foreground: 40 10% 65%;
+    --accent: 40 55% 50%;
+    --accent-foreground: 220 14% 10%;
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 40 30% 94%;
+    --border: 220 12% 20%;
+    --input: 220 12% 20%;
+    --ring: 40 55% 60%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Cormorant Garamond', serif;
+    letter-spacing: -0.01em;
+  }
+  .font-brand { font-family: 'Cinzel', serif; letter-spacing: 0.12em; }
+}
+
+@layer components {
+  .gold-divider {
+    background: linear-gradient(90deg, transparent, hsl(var(--gold) / 0.6), transparent);
+    height: 1px;
+  }
+  .text-gold { color: hsl(var(--gold)); }
+  .bg-maroon { background-color: hsl(var(--maroon)); }
+  .text-maroon { color: hsl(var(--maroon)); }
+  .bg-bottle { background-color: hsl(var(--bottle)); }
+  .text-bottle { color: hsl(var(--bottle)); }
+  .text-charcoal { color: hsl(var(--charcoal)); }
+  .border-gold { border-color: hsl(var(--gold) / 0.5); }
+}
