@@ -3,6 +3,14 @@ import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeF
 import { createServer } from "node:http";
 import { extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 import {
   catalog,
   createOrder,
@@ -152,17 +160,20 @@ function ordersCsv(orders) {
   return rows.map((row) => row.map(csvEscape).join(",")).join("\n");
 }
 
-function uploadImage(body) {
+async function uploadImage(body) {
   const { fileName = "upload.jpg", dataUrl = "" } = body;
   const match = String(dataUrl).match(/^data:(image\/(?:png|jpe?g|webp));base64,(.+)$/);
   if (!match) throw httpError(400, "Upload a PNG, JPG, JPEG, or WEBP image.");
-  mkdirSync(uploadsRoot, { recursive: true });
-  const ext = match[1].split("/")[1].replace("jpeg", "jpg");
-  const safeName = fileName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "image";
-  const stored = `${Date.now()}-${safeName}.${ext}`;
-  const path = join(uploadsRoot, stored);
-  writeFileSync(path, Buffer.from(match[2], "base64"));
-  return { url: `/uploads/${stored}` };
+  
+  try {
+    const result = await cloudinary.uploader.upload(dataUrl, {
+      folder: "adhunik-mahal",
+    });
+    return { url: result.secure_url };
+  } catch (error) {
+    console.error("Cloudinary upload failed:", error);
+    throw httpError(500, "Image upload failed");
+  }
 }
 
 async function api(req, res, url) {
@@ -257,7 +268,7 @@ async function api(req, res, url) {
     return json(res, 200, { order: updateOrderStatus(id, (await readJson(req)).status) });
   }
 
-  if (method === "POST" && path === "/api/admin/uploads") return json(res, 201, uploadImage(await readJson(req)));
+  if (method === "POST" && path === "/api/admin/uploads") return json(res, 201, await uploadImage(await readJson(req)));
 
   throw httpError(404, "API route not found.");
 }
