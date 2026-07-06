@@ -59,10 +59,10 @@ const seedHero = [
 const seedSettings = {
   name: "Adhunik Mahal",
   tagline: "Handpicked Sarees & Apparel · Kolkata",
-  whatsapp: "919830000000",
-  whatsappDisplay: "+91 98300 00000",
+  whatsapp: "919830365132",
+  whatsappDisplay: "098303 65132, 9163231689",
   email: "hello@adhunikmahal.in",
-  address: "Gariahat, Kolkata, West Bengal 700019",
+  address: "46A Ramanath Das Road Niloy Apartment bl-2 flat-3F Dhakuria Kolkata-700031",
   facebook: "https://www.facebook.com/adhunikmahal",
   instagram: "",
   notice: "Free shipping across India",
