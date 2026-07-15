@@ -59,10 +59,9 @@ const ProductPage = () => {
             <Button variant="outline" size="icon" className="h-12 w-12 rounded-none border-charcoal"><Heart className="h-4 w-4" /></Button>
           </div>
 
-          <div className="mt-8 grid grid-cols-3 gap-4 text-center text-xs">
+          <div className="mt-8 flex justify-around text-center text-xs">
             <div><Truck className="h-5 w-5 mx-auto text-maroon mb-1" /> Free Shipping</div>
             <div><RotateCcw className="h-5 w-5 mx-auto text-maroon mb-1" /> 7-Day Exchange</div>
-            <div><ShieldCheck className="h-5 w-5 mx-auto text-maroon mb-1" /> COD Available</div>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, ShieldCheck, Truck } from "lucide-react";
+import { Truck } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -44,12 +44,9 @@ const Checkout = () => {
         ...parsed.data,
         items: items.map((item) => ({ productId: item.product.id, qty: item.qty })),
       });
-      const lines = response.order.items.map((item) => `${item.name} x ${item.qty}`).join("%0A");
-      const msg = `*New Order - Adhunik Mahal*%0A%0A*Order ID:* ${response.order.id}%0A*Customer:* ${encodeURIComponent(form.name)}%0A*Phone:* ${encodeURIComponent(form.phone)}%0A*Address:* ${encodeURIComponent(form.address)}, ${encodeURIComponent(form.city)} - ${encodeURIComponent(form.pincode)}%0A${form.notes ? `*Notes:* ${encodeURIComponent(form.notes)}%0A` : ""}%0A*Items:*%0A${lines}%0A`;
-      window.open(`https://wa.me/${response.settings.whatsapp}?text=${msg}`, "_blank");
-      toast.success(`Order ${response.order.id} saved. Opening WhatsApp…`);
+      toast.success(`Order ${response.order.id} placed successfully!`);
       clear();
-      setTimeout(() => navigate(`/track?id=${encodeURIComponent(response.order.id)}&phone=${encodeURIComponent(form.phone)}`), 800);
+      navigate(`/track?id=${encodeURIComponent(response.order.id)}&phone=${encodeURIComponent(form.phone)}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not place order");
     } finally {
@@ -60,8 +57,7 @@ const Checkout = () => {
   return (
     <StoreLayout>
       <div className="container py-12 max-w-6xl">
-        <h1 className="font-display text-4xl md:text-5xl mb-2">Checkout</h1>
-        <p className="text-muted-foreground mb-10">Create your order list and connect on WhatsApp for availability & payment</p>
+        <h1 className="font-display text-4xl md:text-5xl mb-10">Checkout</h1>
 
         <form onSubmit={submit} className="grid lg:grid-cols-[1fr_400px] gap-10">
           <div className="space-y-8">
@@ -69,7 +65,7 @@ const Checkout = () => {
               <h2 className="font-display text-2xl">Contact & Delivery</h2>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div><Label>Full Name *</Label><Input value={form.name} onChange={(event) => set("name", event.target.value)} required maxLength={80} className="mt-1 rounded-none" /></div>
-                <div><Label>Phone (WhatsApp) *</Label><Input value={form.phone} onChange={(event) => set("phone", event.target.value)} required maxLength={15} className="mt-1 rounded-none" /></div>
+                <div><Label>Phone *</Label><Input value={form.phone} onChange={(event) => set("phone", event.target.value)} required maxLength={15} className="mt-1 rounded-none" /></div>
               </div>
               <div><Label>Delivery Address *</Label><Textarea value={form.address} onChange={(event) => set("address", event.target.value)} required maxLength={400} rows={3} className="mt-1 rounded-none" placeholder="House / Flat, Street, Landmark" /></div>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -102,10 +98,9 @@ const Checkout = () => {
               </div>
               <div className="p-6 pt-0">
                 <Button type="submit" disabled={loading || items.length === 0} className="w-full h-12 rounded-none bg-maroon hover:bg-maroon-deep">
-                  <MessageCircle className="h-4 w-4 mr-2" /> {loading ? "Saving Order…" : "Save & Confirm on WhatsApp"}
+                  {loading ? "Placing Order…" : "Place Order"}
                 </Button>
-                <div className="grid grid-cols-2 gap-3 mt-4 text-[11px] text-muted-foreground">
-                  <div className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-maroon" /> COD secure</div>
+                <div className="flex justify-center mt-4 text-[11px] text-muted-foreground">
                   <div className="flex items-center gap-1.5"><Truck className="h-3.5 w-3.5 text-maroon" /> All-India ship</div>
                 </div>
               </div>

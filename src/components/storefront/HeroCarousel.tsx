@@ -56,7 +56,7 @@ export function HeroCarousel() {
               <span className="text-gold">Handloom Certified</span>
               <span>Free Shipping All India</span>
               <span className="text-gold">Free Shipping</span>
-              <span>WhatsApp to Order</span>
+              <span>Premium Collections</span>
               <span className="text-gold">Curated in Kolkata</span>
               <span>7-day Exchange</span>
             </div>

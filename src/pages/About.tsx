@@ -6,7 +6,7 @@ import { useCatalog } from "@/lib/api";
 
 const promises = [
   { icon: Award, title: "Curated Handloom", text: "Each piece is selected for weave quality, drape, finish and occasion fit." },
-  { icon: Truck, title: "All-India Shipping", text: "Orders are packed carefully and shipped after WhatsApp confirmation." },
+  { icon: Truck, title: "All-India Shipping", text: "Orders are packed carefully and shipped after confirmation." },
   { icon: PackageCheck, title: "Exchange Support", text: "A seven-day exchange window helps you shop special pieces with confidence." },
 ];
 
@@ -62,7 +62,6 @@ const About = () => {
           <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
             <p>Most sarees are best dry cleaned and stored folded in breathable fabric covers. Avoid direct perfume spray on zari and tissue silk.</p>
             <p>Shipping is available across India. We maintain a strict no return and no exchange policy to ensure the highest quality of our handpicked sarees.</p>
-            <p>COD is the default checkout method for this local storefront. Online payments can be coordinated directly after order confirmation.</p>
           </div>
         </div>
       </section>

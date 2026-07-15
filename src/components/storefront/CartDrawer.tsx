@@ -48,7 +48,7 @@ export function CartDrawer() {
 
             <div className="border-t border-border p-5 space-y-3 bg-secondary/40">
               <Button asChild onClick={() => setOpen(false)} className="w-full h-12 rounded-none bg-maroon hover:bg-maroon-deep">
-                <Link to="/checkout"><MessageCircle className="h-4 w-4 mr-2" /> Checkout via WhatsApp</Link>
+                <Link to="/checkout">Proceed to Checkout</Link>
               </Button>
               <p className="text-[11px] text-center text-muted-foreground">Pan-India shipping</p>
             </div>

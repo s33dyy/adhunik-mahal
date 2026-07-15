@@ -43,7 +43,7 @@ const TrackOrder = () => {
       <div className="container py-16 max-w-4xl">
         <p className="text-[11px] tracking-[0.3em] uppercase text-maroon mb-2">Order Status</p>
         <h1 className="font-display text-5xl">Track Your Order</h1>
-        <p className="text-muted-foreground mt-2">Use the order ID saved after checkout and the WhatsApp phone number used for delivery.</p>
+        <p className="text-muted-foreground mt-2">Use your order ID and phone number to track your order. <strong>Please bookmark this page or add it to your home screen to check for updates!</strong></p>
 
         <form onSubmit={submit} className="mt-10 grid md:grid-cols-[1fr_1fr_auto] gap-4 bg-card border border-border p-5">
           <div><Label>Order ID</Label><Input value={id} onChange={(event) => setId(event.target.value)} required className="mt-1 rounded-none" placeholder="AM260607-ABCD" /></div>
