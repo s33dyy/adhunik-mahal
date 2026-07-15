@@ -539,6 +539,43 @@ export async function deleteHero(id) {
   await run("DELETE FROM hero_slides WHERE id = ?", [id]);
 }
 
+async function sendMessengerAlert(orderId, input, items) {
+  const token = process.env.MESSENGER_PAGE_ACCESS_TOKEN;
+  const adminPsid = process.env.MESSENGER_ADMIN_PSID;
+  if (!token || !adminPsid) {
+    console.log("Messenger credentials not found, skipping alert.");
+    return;
+  }
+
+  const itemsList = items.map(item => `• ${item.qty}x ${item.name} (${item.sku})`).join('\n');
+  const messageText = `🔔 New Order Alert!\n` +
+    `Order ID: ${orderId}\n` +
+    `Customer: ${input.name}\n` +
+    `Phone: ${input.phone}\n` +
+    `Address: ${input.address}, ${input.city} - ${input.pincode}\n` +
+    (input.notes ? `Notes: ${input.notes}\n` : '') +
+    `\nItems:\n${itemsList}`;
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v25.0/me/messages?access_token=${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: { id: adminPsid },
+        message: { text: messageText }
+      })
+    });
+    const result = await response.json();
+    if (result.error) {
+      console.error("Facebook API error sending Messenger alert:", result.error);
+    } else {
+      console.log(`Messenger alert sent successfully: ${result.message_id}`);
+    }
+  } catch (error) {
+    console.error("Network error sending Messenger alert:", error);
+  }
+}
+
 export async function createOrder(input) {
   const items = Array.isArray(input.items) ? input.items : [];
   if (!input.name || !input.phone || !input.address || !input.city || !input.pincode) throw httpError(400, "Delivery details are incomplete.");
@@ -565,6 +602,9 @@ export async function createOrder(input) {
     INSERT INTO orders (id, customer_name, phone, address, city, pincode, notes, items_json, status, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
   `, [id, input.name, input.phone, input.address, input.city, input.pincode, input.notes || "", JSON.stringify(orderItems), stamp, stamp]);
+  
+  sendMessengerAlert(id, input, orderItems);
+
   return getOrder(id);
 }
 
