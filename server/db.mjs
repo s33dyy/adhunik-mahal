@@ -554,7 +554,9 @@ async function sendMessengerAlert(orderId, input, items) {
     `Phone: ${input.phone}\n` +
     `Address: ${input.address}, ${input.city} - ${input.pincode}\n` +
     (input.notes ? `Notes: ${input.notes}\n` : '') +
-    `\nItems:\n${itemsList}`;
+    `\nItems:\n${itemsList}\n\n` +
+    `Update Status (Pending / Confirmed / Shipped / Delivered / Cancelled):\n` +
+    `👉 https://adhunikmahal.in/admin/orders`;
 
   try {
     const response = await fetch(`https://graph.facebook.com/v25.0/me/messages?access_token=${token}`, {
